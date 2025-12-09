@@ -1,56 +1,49 @@
-﻿const express = require('express');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+﻿javascript
+const express = require('express');
+const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const MONGO_URL = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-const DB_NAME = 'plants_db';
+
+// Инициализируем Supabase
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+);
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-let db;
-let mongoClient;
-
-// Подключение к MongoDB
-async function connectToMongo() {
+// Проверка подключения
+async function checkConnection() {
     try {
-        mongoClient = new MongoClient(MONGO_URL, {
-            serverApi: {
-                version: ServerApiVersion.v1,
-                strict: true,
-                deprecationErrors: true,
-            }
-        });
+        const { data, error } = await supabase
+            .from('plants')
+            .select('count')
+            .limit(1);
         
-        await mongoClient.connect();
-        db = mongoClient.db(DB_NAME);
+        if (error) throw error;
+        console.log('✅ Подключено к Supabase');
         
-        console.log('✅ Подключено к MongoDB Atlas');
-        
-        // Инициализируем коллекции и демо данные
-        await initializeCollections();
+        // Инициализируем демо данные если нужно
+        await initializePlants();
         
     } catch (error) {
-        console.error('❌ Ошибка подключения к MongoDB:', error);
+        console.error('❌ Ошибка подключения к Supabase:', error);
         process.exit(1);
     }
 }
 
-async function initializeCollections() {
+async function initializePlants() {
     try {
-        // Создаем коллекции если их нет
-        const collections = await db.listCollections().toArray();
-        const collectionNames = collections.map(c => c.name);
+        const { count, error } = await supabase
+            .from('plants')
+            .select('*', { count: 'exact', head: true });
         
-        if (!collectionNames.includes('plants')) {
-            await db.createCollection('plants');
-            console.log('✅ Коллекция plants создана');
-            
-            // Добавляем демо данные
+        if (count === 0) {
             const demoPlantsData = [
                 {
                     id: 1,
@@ -129,19 +122,17 @@ async function initializeCollections() {
                 }
             ];
             
-            await db.collection('plants').insertMany(demoPlantsData);
+            const { error: insertError } = await supabase
+                .from('plants')
+                .insert(demoPlantsData);
+            
+            if (insertError) throw insertError;
             console.log('✅ Демо данные добавлены');
         } else {
-            console.log('✅ Коллекция plants уже существует');
+            console.log('✅ Таблица plants уже заполнена');
         }
-        
-        if (!collectionNames.includes('users')) {
-            await db.createCollection('users');
-            console.log('✅ Коллекция users создана');
-        }
-        
     } catch (error) {
-        console.error('❌ Ошибка инициализации коллекций:', error);
+        console.error('❌ Ошибка инициализации данных:', error);
     }
 }
 
@@ -150,8 +141,12 @@ async function initializeCollections() {
 // GET все растения
 app.get('/api/plants', async (req, res) => {
     try {
-        const plants = await db.collection('plants').find({}).toArray();
-        res.json(plants);
+        const { data, error } = await supabase
+            .from('plants')
+            .select('*');
+        
+        if (error) throw error;
+        res.json(data);
     } catch (error) {
         console.error('Ошибка получения растений:', error);
         res.status(500).json({ error: error.message });
@@ -161,12 +156,17 @@ app.get('/api/plants', async (req, res) => {
 // GET данные пользователя (избранное и проекты)
 app.get('/api/users/:userId', async (req, res) => {
     try {
-        const user = await db.collection('users').findOne({ _id: req.params.userId });
-        if (user) {
-            res.json(user);
-        } else {
-            res.json({ favorites: [], projects: [] });
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', req.params.userId)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') {
+            throw error;
         }
+        
+        res.json(data || { id: req.params.userId, favorites: [], projects: [] });
     } catch (error) {
         console.error('Ошибка получения пользователя:', error);
         res.status(500).json({ error: error.message });
@@ -177,15 +177,31 @@ app.get('/api/users/:userId', async (req, res) => {
 app.post('/api/users/:userId/favorites', async (req, res) => {
     try {
         const { plantId, isFavorite } = req.body;
-        const update = isFavorite 
-            ? { $addToSet: { favorites: plantId } }
-            : { $pull: { favorites: plantId } };
+        const userId = req.params.userId;
         
-        await db.collection('users').updateOne(
-            { _id: req.params.userId },
-            update,
-            { upsert: true }
-        );
+        // Получаем текущие избранные
+        let { data: userData, error: getError } = await supabase
+            .from('users')
+            .select('favorites')
+            .eq('id', userId)
+            .single();
+        
+        let favorites = userData?.favorites || [];
+        
+        if (isFavorite) {
+            if (!favorites.includes(plantId)) {
+                favorites.push(plantId);
+            }
+        } else {
+            favorites = favorites.filter(id => id !== plantId);
+        }
+        
+        // Обновляем или создаем запись
+        const { error } = await supabase
+            .from('users')
+            .upsert({ id: userId, favorites }, { onConflict: 'id' });
+        
+        if (error) throw error;
         res.json({ ok: true });
     } catch (error) {
         console.error('Ошибка сохранения избранного:', error);
@@ -197,11 +213,13 @@ app.post('/api/users/:userId/favorites', async (req, res) => {
 app.put('/api/users/:userId/projects', async (req, res) => {
     try {
         const { projects } = req.body;
-        await db.collection('users').updateOne(
-            { _id: req.params.userId },
-            { $set: { projects } },
-            { upsert: true }
-        );
+        const userId = req.params.userId;
+        
+        const { error } = await supabase
+            .from('users')
+            .upsert({ id: userId, projects }, { onConflict: 'id' });
+        
+        if (error) throw error;
         res.json({ ok: true });
     } catch (error) {
         console.error('Ошибка сохранения проектов:', error);
@@ -220,7 +238,7 @@ app.use((req, res) => {
 });
 
 // Запуск сервера
-connectToMongo().then(() => {
+checkConnection().then(() => {
     app.listen(PORT, () => {
         console.log(`🚀 Сервер запущен на http://localhost:${PORT}`);
         console.log(`📝 API доступен по адресу http://localhost:${PORT}/api`);
@@ -230,9 +248,5 @@ connectToMongo().then(() => {
 // Graceful shutdown
 process.on('SIGINT', async () => {
     console.log('\n⛔ Отключение сервера...');
-    if (mongoClient) {
-        await mongoClient.close();
-        console.log('✅ Соединение с MongoDB закрыто');
-    }
     process.exit(0);
 });
