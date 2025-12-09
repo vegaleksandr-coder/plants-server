@@ -1,8 +1,8 @@
-json
+п»їjson
 {
   "name": "plants-server",
   "version": "1.0.0",
-  "description": "API для базы растений",
+  "description": "API РґР»СЏ Р±Р°Р·С‹ СЂР°СЃС‚РµРЅРёР№",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
