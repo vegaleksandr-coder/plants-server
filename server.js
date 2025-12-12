@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 // Инициализируем Supabase
 const supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY
+    process.env.SUPABASE_KEY
 );
 
 // Middleware
