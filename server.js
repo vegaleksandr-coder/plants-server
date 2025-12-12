@@ -249,4 +249,3 @@ process.on('SIGINT', async () => {
     console.log('\n⛔ Отключение сервера...');
     process.exit(0);
 });
-Fix server.js first line
