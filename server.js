@@ -46,8 +46,8 @@ async function initializePlants() {
             const demoPlantsData = [
                 {
                     id: 1,
-                    nameRU: "Яблоня домашняя",
-                    nameLAT: "Malus domestica",
+                    nameru: "Яблоня домашняя",
+                    namelat: "Malus domestica",
                     type: "Дерево",
                     foliage: "Лиственное",
                     height: "высокие (более 2,5 м)",
@@ -61,8 +61,8 @@ async function initializePlants() {
                 },
                 {
                     id: 2,
-                    nameRU: "Лаванда узколистная",
-                    nameLAT: "Lavandula angustifolia",
+                    nameru: "Лаванда узколистная",
+                    namelat: "Lavandula angustifolia",
                     type: "Многолетник",
                     foliage: "Вечнозеленое",
                     height: "низкие (до 1 м)",
@@ -76,8 +76,8 @@ async function initializePlants() {
                 },
                 {
                     id: 3,
-                    nameRU: "Ель обыкновенная",
-                    nameLAT: "Picea abies",
+                    nameru: "Ель обыкновенная",
+                    namelat: "Picea abies",
                     type: "Дерево",
                     foliage: "Хвойное",
                     height: "высокие (более 2,5 м)",
@@ -91,8 +91,8 @@ async function initializePlants() {
                 },
                 {
                     id: 4,
-                    nameRU: "Помидор обыкновенный",
-                    nameLAT: "Solanum lycopersicum",
+                    nameru: "Помидор обыкновенный",
+                    namelat: "Solanum lycopersicum",
                     type: "Однолетник",
                     foliage: "Лиственное",
                     height: "средние (1-2,5 м)",
@@ -106,8 +106,8 @@ async function initializePlants() {
                 },
                 {
                     id: 5,
-                    nameRU: "Роза парковая",
-                    nameLAT: "Rosa rugosa",
+                    nameru: "Роза парковая",
+                    namelat: "Rosa rugosa",
                     type: "Кустарник",
                     foliage: "Лиственное",
                     height: "средние (1-2,5 м)",
